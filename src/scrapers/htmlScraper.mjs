@@ -21,9 +21,7 @@ export const htmlGetRequest = async (url, options) => {
 					setTimeout(resolve, options.httpReqRetryDelay),
 				);
 			} else {
-				console.error(
-					`\nhtmlGetRequest failed with response ${_err}\n`,
-				);
+				logError(`\nhtmlGetRequest failed with response:\n ${_err}\n`);
 				return undefined;
 			}
 		}

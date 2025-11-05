@@ -1,27 +1,34 @@
+import chromium from "@sparticuz/chromium";
 import axios from "axios";
-import { chromium } from "playwright";
+import puppeteer from "puppeteer-core";
 import { SourceTypes } from "../utils/constants.mjs";
 import { logError, replaceParamValue } from "../utils/utils.mjs";
 import { htmlScrapeEventByID } from "./htmlScraper.mjs";
 
 const launchBrowser = async (url) => {
-	const browser = await chromium.launch({ headless: true });
-	const context = await browser.newContext({ locale: "en-US" });
-	const page = await context.newPage();
-	await page.goto(url, { waitUntil: "networkidle" });
-	return { browser, context, page };
+	const browser = await puppeteer.launch({
+		args: chromium.args,
+		defaultViewport: chromium.defaultViewport,
+		executablePath: await chromium.executablePath(),
+		headless: chromium.headless,
+	});
+	const page = await browser.newPage();
+
+	await page.setExtraHTTPHeaders({ "Accept-Language": "en-US,en;q=0.9" });
+	await page.goto(url, { waitUntil: "networkidle0" });
+	return { browser, page };
 };
 
 const handleDialogWindows = async (page, delayMs) => {
-	await page.click('role=button[name="Decline optional cookies"]');
-	await page.waitForTimeout(delayMs);
+	await page.click('[role="button"][aria-label="Decline optional cookies"]');
+	await new Promise((resolve) => setTimeout(resolve, delayMs));
 	await page.click("body", { force: true });
-	await page.waitForTimeout(delayMs);
+	await new Promise((resolve) => setTimeout(resolve, delayMs));
 	await page.keyboard.press("Escape");
 };
 
 const groupSeeMore = async (page) => {
-	await page.click('role=button[name="See more"]');
+	await page.click('[role="button"][aria-label="See more"]');
 };
 
 const waitForGraphQLRequest = (page) => {
@@ -48,7 +55,7 @@ const scrollUntilGraphQL = async (
 			return document.body.scrollHeight;
 		});
 
-		await page.waitForTimeout(delayMs);
+		await new Promise((resolve) => setTimeout(resolve, delayMs));
 
 		if (currentScrollHeight === lastScrollHeight) {
 			return null;
@@ -68,8 +75,8 @@ const scrollUntilGraphQL = async (
 	return null;
 };
 
-const getCookies = async (context) => {
-	const cookies = await context.cookies();
+const getCookies = async (page) => {
+	const cookies = await page.cookies();
 	return cookies.map((c) => `${c.name}=${c.value}`).join("; ");
 };
 
@@ -114,14 +121,15 @@ export const captureGraphQL = async (url, sourceType) => {
 	const delayMs = 100;
 	const maxScrolls = 20;
 
-	const { browser, context, page } = await launchBrowser(url);
+	const { browser, page } = await launchBrowser(url);
 	await handleDialogWindows(page, delayMs);
 
+	const graphqlPromise = waitForGraphQLRequest(page);
+
 	if (sourceType === SourceTypes.Group) {
-		groupSeeMore(page);
+		await groupSeeMore(page);
 	}
 
-	const graphqlPromise = waitForGraphQLRequest(page);
 	const graphqlRequest = await scrollUntilGraphQL(
 		page,
 		graphqlPromise,
@@ -134,7 +142,7 @@ export const captureGraphQL = async (url, sourceType) => {
 
 	if (graphqlRequest) {
 		postData = graphqlRequest.postData();
-		cookies = await getCookies(context);
+		cookies = await getCookies(page);
 	}
 
 	await browser.close();
