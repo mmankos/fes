@@ -1,0 +1,33 @@
+{
+	"name": "@mmankos/fes",
+	"version": "0.1.0",
+	"description": "A Facebook event scraper that extracts events via both HTML-embedded data and the GraphQL API.",
+	"keywords": [
+		"facebook",
+		"event",
+		"scraper",
+		"facebook-events",
+		"axios",
+		"playwright"
+	],
+	"homepage": "https://github.com/mmankos/fes#readme",
+	"bugs": {
+		"url": "https://github.com/mmankos/fes/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/mmankos/fes.git"
+	},
+	"license": "MIT",
+	"author": "Matej Maňkoš",
+	"type": "module",
+	"main": "src/index.mjs",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"dependencies": {
+		"axios": "^1.13.1",
+		"p-limit": "^7.2.0",
+		"playwright": "^1.56.1"
+	}
+}
