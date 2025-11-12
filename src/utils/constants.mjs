@@ -16,5 +16,5 @@ export const UrlModifiers = Object.freeze({
 
 export const PageElements = Object.freeze({
 	DeclineCookies: '[role="button"][aria-label="Decline optional cookies"]',
-	GroupSeeMoreEvents: '[role="button"][aria-label="See more"]',
+	GroupSeeMoreEvents: '[role="button"][aria-label="See more group events"]',
 });
