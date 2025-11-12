@@ -1,7 +1,7 @@
 import axios from "axios";
 import pLimit from "p-limit";
 import { SourceTypes } from "../utils/constants.mjs";
-import { constructUrl, extractJson } from "../utils/utils.mjs";
+import { constructUrl, extractJson, logError } from "../utils/utils.mjs";
 
 export const htmlGetRequest = async (url, options) => {
 	for (let attempt = 1; attempt <= options.httpReqRetries; attempt++) {

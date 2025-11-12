@@ -20,7 +20,7 @@ const launchBrowser = async (url) => {
 };
 
 const handleDialogWindows = async (page, delayMs) => {
-	(await page.$(PageElements.DeclineCookies))?.click();
+	await (await page.$(PageElements.DeclineCookies))?.click();
 	await new Promise((resolve) => setTimeout(resolve, delayMs));
 	await page.click("body", { force: true });
 	await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -123,7 +123,7 @@ export const captureGraphQL = async (url, sourceType) => {
 	const graphqlPromise = waitForGraphQLRequest(page);
 
 	if (sourceType === SourceTypes.Group) {
-		await page.click(PageElements.GroupSeeMoreEvents);
+		await (await page.$(PageElements.GroupSeeMoreEvents))?.click();
 	}
 
 	const graphqlRequest = await scrollUntilGraphQL(
