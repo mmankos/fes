@@ -38,6 +38,11 @@ const scrapedEvents = await scrapeEvents(sources, options);
 console.dir(scrapedEvents, { depth: null });
 ```
 
+## AWS Lambda Configuration
+In **General configuration** set **Memory** to 1600MB or more preferably and
+**Timeout** to a reasonable value based on the number of sources to scrape plus
+some headroom.
+
 ## TODO
 - [X] Make AWS Lambda compatible
 - [ ] Proxy support (only GraphQL API requests seem to be affected by rate limits)
