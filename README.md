@@ -1,7 +1,7 @@
 # fes - Facebook Event Scraper
 A Facebook event scraper that is AWS Lambda compatible and extracts events via both HTML-embedded data and the GraphQL API to capture all the events.
 
-[![Watch the video](https://raw.githubusercontent.com/mmankos/fes/main/examples/thumbnail.png)](https://raw.githubusercontent.com/mmankos/fes/main/examples/video.mp4)
+https://github.com/user-attachments/assets/8fb40eca-f6d9-4ac3-96a5-cc2817f9e45c
 
 ## ⚠️ Important Notice
 When using this package to scrape Facebook events:
