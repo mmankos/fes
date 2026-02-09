@@ -1,19 +1,28 @@
 import axios from "axios";
 import pLimit from "p-limit";
+import { SocksProxyAgent } from "socks-proxy-agent";
 import { SourceTypes } from "../utils/constants.mjs";
 import { constructUrl, extractJson, logError } from "../utils/utils.mjs";
 
 export const htmlGetRequest = async (url, options) => {
+	const axiosConfig = {
+		headers: {
+			accept: "text/html",
+			"sec-fetch-mode": "navigate",
+			"user-agent": "Mozilla/5.0",
+		},
+		timeout: options.httpReqTimeout,
+	};
+
+	if (options.useProxy && options.proxyServer) {
+		const agent = new SocksProxyAgent(options.proxyServer);
+		axiosConfig.httpAgent = agent;
+		axiosConfig.httpsAgent = agent;
+	}
+
 	for (let attempt = 1; attempt <= options.httpReqRetries; attempt++) {
 		try {
-			const response = await axios.get(url, {
-				headers: {
-					accept: "text/html",
-					"sec-fetch-mode": "navigate",
-					"user-agent": "Mozilla/5.0",
-				},
-				timeout: options.httpReqTimeout,
-			});
+			const response = await axios.get(url, axiosConfig);
 			return response.data;
 		} catch (_err) {
 			if (attempt < options.httpReqRetries) {

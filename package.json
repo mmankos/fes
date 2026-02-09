@@ -1,6 +1,6 @@
 {
 	"name": "@mmankos/fes",
-	"version": "0.1.9",
+	"version": "0.2.0",
 	"description": "A Facebook event scraper that extracts events via both HTML-embedded data and the GraphQL API.",
 	"keywords": [
 		"facebook",
@@ -25,9 +25,12 @@
 	"type": "module",
 	"main": "src/index.mjs",
 	"dependencies": {
-		"@sparticuz/chromium": "^141.0.0",
 		"axios": "^1.13.2",
 		"p-limit": "^7.2.0",
-		"puppeteer-core": "^24.29.0"
+		"puppeteer-core": "^24.29.0",
+		"socks-proxy-agent": "^8.0.5"
+	},
+	"optionalDependencies": {
+		"@sparticuz/chromium": "^141.0.0"
 	}
 }

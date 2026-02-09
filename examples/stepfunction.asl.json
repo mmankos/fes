@@ -1,0 +1,72 @@
+{
+	"Comment": "Facebook Event Scraper - Loops until all pages are scraped",
+	"StartAt": "facebook-scraper-lambda",
+	"States": {
+		"facebook-scraper-lambda": {
+			"Type": "Task",
+			"Resource": "arn:aws:states:::lambda:invoke",
+			"OutputPath": "$.Payload",
+			"Parameters": {
+				"Payload.$": "$",
+				"FunctionName": "arn:aws:lambda:AWS_REGION:AWS_ACCOUNT_ID:function:LAMBDA_FUNCTION_NAME:$LATEST"
+			},
+			"Retry": [
+				{
+					"ErrorEquals": [
+						"Lambda.ServiceException",
+						"Lambda.AWSLambdaException",
+						"Lambda.SdkClientException",
+						"Lambda.TooManyRequestsException"
+					],
+					"IntervalSeconds": 1,
+					"MaxAttempts": 3,
+					"BackoffRate": 2,
+					"JitterStrategy": "FULL"
+				}
+			],
+			"Next": "hasNextPage"
+		},
+		"hasNextPage": {
+			"Type": "Choice",
+			"Choices": [
+				{
+					"Next": "continueScraping",
+					"And": [
+						{
+							"Variable": "$.hasNextPage",
+							"IsPresent": true
+						},
+						{
+							"Variable": "$.hasNextPage",
+							"BooleanEquals": true
+						}
+					]
+				}
+			],
+			"Default": "ScrapingComplete"
+		},
+		"continueScraping": {
+			"Type": "Pass",
+			"Parameters": {
+				"continueFrom": {
+					"postData.$": "$.nextPostData",
+					"cookies.$": "$.cookies",
+					"sourceType.$": "$.sourceType"
+				},
+				"totalMessages.$": "$.totalMessages",
+				"source_id.$": "$.source_id"
+			},
+			"ResultPath": "$",
+			"Next": "facebook-scraper-lambda"
+		},
+		"ScrapingComplete": {
+			"Type": "Pass",
+			"Parameters": {
+				"status": "complete",
+				"totalMessages.$": "$.totalMessages",
+				"message": "Scraping complete"
+			},
+			"End": true
+		}
+	}
+}

@@ -1,6 +1,7 @@
 import chromium from "@sparticuz/chromium";
 import axios from "axios";
 import puppeteer from "puppeteer-core";
+import { SocksProxyAgent } from "socks-proxy-agent";
 import { PageElements, SourceTypes } from "../utils/constants.mjs";
 import { logError, replaceParamValue } from "../utils/utils.mjs";
 import { htmlScrapeEventByID } from "./htmlScraper.mjs";
@@ -14,11 +15,8 @@ const launchBrowser = async (url, options) => {
         "--no-zygote",
     ];
 
-    if (options.useProxy) {
-        puppeteerArgs.push(
-            "--proxy-server=socks5://127.0.0.1:1055",
-            "--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1",
-        );
+    if (options.useProxy && options.proxyServer) {
+        puppeteerArgs.push(`--proxy-server=${options.proxyServer}`);
     }
 
     const browser = await puppeteer.launch({
@@ -29,6 +27,20 @@ const launchBrowser = async (url, options) => {
     });
     const page = await browser.newPage();
     await page.setExtraHTTPHeaders({ "Accept-Language": "en-US,en;q=0.9" });
+
+    // Log public IP to verify proxy is working
+    try {
+        await page.goto("https://ifconfig.me/ip", {
+            waitUntil: "networkidle0",
+            timeout: 10000,
+        });
+        const publicIP = await page.evaluate(() =>
+            document.body.innerText.trim(),
+        );
+        console.log("[DEBUG] Public IP through proxy:", publicIP);
+    } catch (e) {
+        console.log("[DEBUG] Could not check public IP:", e.message);
+    }
 
     await page.goto(url, { waitUntil: "networkidle0", timeout: 60000 });
     return { browser, page };
@@ -92,19 +104,28 @@ const getCookies = async (page) => {
 };
 
 export const graphQLPostRequest = async (postData, cookies, options) => {
+    // Create SOCKS proxy agent if proxy is configured
+    const axiosConfig = {
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "Mozilla/5.0",
+            Cookie: cookies,
+        },
+        timeout: options.httpReqTimeout,
+    };
+
+    if (options.useProxy && options.proxyServer) {
+        const agent = new SocksProxyAgent(options.proxyServer);
+        axiosConfig.httpAgent = agent;
+        axiosConfig.httpsAgent = agent;
+    }
+
     for (let attempt = 1; attempt <= options.httpReqRetries; attempt++) {
         try {
             const response = await axios.post(
                 "https://www.facebook.com/api/graphql/",
                 postData,
-                {
-                    headers: {
-                        "Content-Type": "application/x-www-form-urlencoded",
-                        "User-Agent": "Mozilla/5.0",
-                        Cookie: cookies,
-                    },
-                    timeout: options.httpReqTimeout,
-                },
+                axiosConfig,
             );
 
             const edges = response.data?.data?.serpResponse?.results?.edges;
@@ -154,6 +175,24 @@ export const captureGraphQL = async (url, sourceType, options) => {
     if (graphqlRequest) {
         postData = graphqlRequest.postData();
         cookies = await getCookies(page);
+        console.log("[DEBUG] Captured GraphQL request");
+    } else {
+        console.log("[DEBUG] No GraphQL request captured after scrolling");
+        // Try to get page content for debugging
+        const pageContent = await page.content();
+        if (
+            pageContent.includes("You must log in") ||
+            pageContent.includes("Log in")
+        ) {
+            console.log("[DEBUG] Page requires login");
+        }
+        if (
+            pageContent.includes("blocked") ||
+            pageContent.includes("suspicious")
+        ) {
+            console.log("[DEBUG] Page may be blocked");
+        }
+        console.log("[DEBUG] Page URL:", page.url());
     }
 
     await browser.close();
@@ -162,6 +201,8 @@ export const captureGraphQL = async (url, sourceType, options) => {
 };
 
 export const graphQLScrapeEvents = async (
+    postData,
+    cookies,
     url,
     sourceType,
     events,
@@ -171,9 +212,28 @@ export const graphQLScrapeEvents = async (
 ) => {
     const promises = [];
 
+    // If postData/cookies provided, use them (continuation mode)
+    // Otherwise, capture fresh from browser
+    if (postData && cookies) {
+        console.log("[DEBUG] graphQLScrapeEvents: using provided postData and cookies (continuation)");
+    } else {
+        console.log("[DEBUG] Starting captureGraphQL for URL:", url);
+        ({ postData, cookies } = await captureGraphQL(
+            url,
+            sourceType,
+            options,
+        ));
+    }
     let hasNextPage = true;
     let idExtractor;
-    let { postData, cookies } = await captureGraphQL(url, sourceType, options);
+
+    if (!postData) {
+        console.log(
+            "[DEBUG] postData is null, skipping graphQL scraping for this source",
+        );
+        return { hasNextPage: false, nextPostData: null, cookies: null };
+    }
+    console.log("[DEBUG] postData captured, proceeding with pagination");
 
     while (hasNextPage) {
         if (
@@ -221,7 +281,17 @@ export const graphQLScrapeEvents = async (
         promises.push(options.derestrict ? promise : await promise);
 
         postData = replaceParamValue(postData, "cursor", endCursor);
+
+        if (options.isAWS) {
+            await Promise.all(promises);
+            return {
+                hasNextPage,
+                nextPostData: hasNextPage ? postData : null,
+                cookies: hasNextPage ? cookies : null,
+            };
+        }
     }
 
     await Promise.all(promises);
+    return { hasNextPage: false, nextPostData: null, cookies: null };
 };

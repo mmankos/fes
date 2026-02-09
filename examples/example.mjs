@@ -13,7 +13,8 @@ const options = {
     httpReqTimeout: 5000, // timeout each HTTP request after 5s
     isAWS: false, // if true abide by the rules set by AWS Lambda (max one puppeteer browser instance at a time)
     outputFile: "events.json", // optionally save results to file
-    useProxy: false, // if true, routes traffic through the local Tailscale SOCKS5 proxy (localhost:1055)
+    proxyServer: undefined, // socks5 server address to route traffic through
+    useProxy: false, // if true, and proxyServer option is set traffic is routed through the socks5 proxy
 };
 
 const scrapedEvents = await scrapeEvents(sources, options);
